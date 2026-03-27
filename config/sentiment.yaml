@@ -1,0 +1,3 @@
+use_headline: true
+use_summary: true
+aggregation: "confidence_weighted"
