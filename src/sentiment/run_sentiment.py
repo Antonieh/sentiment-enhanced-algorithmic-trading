@@ -14,12 +14,12 @@ def build_text(title: str, summary: str) -> str:
 
 
 def run_finbert_for_ticker(ticker: str) -> None:
-    input_path = Path("data/raw/news") / f"{ticker}_news.json"
+    input_path = Path("data/raw/rss news") / f"{ticker}_news.json"
     output_dir = Path("data/processed/sentiment")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not input_path.exists():
-        raise FileNotFoundError(f"Missing raw news file: {input_path}")
+        raise FileNotFoundError(f"Missing raw rss news file: {input_path}")
 
     with open(input_path, "r", encoding="utf-8") as f:
         entries = json.load(f)
