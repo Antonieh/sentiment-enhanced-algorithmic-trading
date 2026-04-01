@@ -3,6 +3,8 @@ import pandas as pd
 
 from src.features.technicals import add_sma_features
 
+# Temporary workaround: current Yahoo market CSV export contains extra header rows.
+# Later this should be fixed at the data collection stage so merge does not need skiprows.
 
 def merge_market_and_sentiment(ticker: str) -> None:
     market_path = Path("data/raw/market") / f"{ticker}_ohlcv.csv"
