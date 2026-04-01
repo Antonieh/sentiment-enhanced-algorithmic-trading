@@ -10,24 +10,21 @@ def run_baseline_sma_strategy(ticker: str) -> pd.DataFrame:
 
     df = pd.read_csv(input_path)
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df.dropna(subset=["Date"])
+    df = df.dropna(subset=["Date"]).copy()
 
     required_cols = ["Date", "Close", "sma_short", "sma_long"]
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns for baseline strategy: {missing}")
 
-    df = df.copy()
     df["position_signal"] = 0
 
-    # Long entry when short SMA crosses above long SMA
     df.loc[
         (df["sma_short"] > df["sma_long"]) &
         (df["sma_short"].shift(1) <= df["sma_long"].shift(1)),
         "position_signal"
     ] = 1
 
-    # Exit when short SMA crosses below long SMA
     df.loc[
         (df["sma_short"] < df["sma_long"]) &
         (df["sma_short"].shift(1) >= df["sma_long"].shift(1)),
@@ -65,5 +62,4 @@ def run_baseline_sma_strategy(ticker: str) -> pd.DataFrame:
             in_position = False
             entry_row = None
 
-    trades_df = pd.DataFrame(trades)
-    return trades_df
+    return pd.DataFrame(trades)

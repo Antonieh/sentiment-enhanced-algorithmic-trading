@@ -1,8 +1,9 @@
 from pathlib import Path
+
 import pandas as pd
 
 
-def aggregate_daily_sentiment(ticker: str) -> None:
+def aggregate_daily_sentiment(ticker: str) -> Path:
     input_path = Path("data/processed/sentiment") / f"{ticker}_article_sentiment.csv"
     output_dir = Path("data/processed/sentiment")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -12,32 +13,51 @@ def aggregate_daily_sentiment(ticker: str) -> None:
 
     df = pd.read_csv(input_path)
 
-    if df.empty:
-        raise ValueError(f"No article sentiment data found for {ticker}")
+    required_cols = [
+        "published",
+        "p_positive",
+        "p_negative",
+        "p_neutral",
+        "article_sentiment_score",
+        "confidence",
+    ]
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns for aggregation: {missing}")
 
-    # Convert published timestamp to date
     df["published"] = pd.to_datetime(df["published"], errors="coerce")
-    df = df.dropna(subset=["published"])
+    df = df.dropna(subset=["published"]).copy()
     df["date"] = df["published"].dt.date
 
-    # Confidence weight: max of class probabilities
-    df["confidence_weight"] = df[["p_positive", "p_neutral", "p_negative"]].max(axis=1)
+    if df.empty:
+        daily_df = pd.DataFrame(columns=["date", "S_t", "M_t", "n_articles"])
+    else:
+        grouped = df.groupby("date", as_index=False).apply(
+            lambda g: pd.Series(
+                {
+                    "S_t": (
+                        (g["confidence"] * g["article_sentiment_score"]).sum()
+                        / g["confidence"].sum()
+                    )
+                    if g["confidence"].sum() > 0
+                    else 0.0,
+                    "M_t": abs(
+                        (
+                            (g["confidence"] * g["article_sentiment_score"]).sum()
+                            / g["confidence"].sum()
+                        )
+                        if g["confidence"].sum() > 0
+                        else 0.0
+                    ),
+                    "n_articles": len(g),
+                }
+            )
+        ).reset_index(drop=True)
 
-    # Weighted numerator
-    df["weighted_score"] = df["confidence_weight"] * df["article_sentiment_score"]
-
-    grouped = df.groupby("date").agg(
-        n_articles=("article_sentiment_score", "count"),
-        weighted_score_sum=("weighted_score", "sum"),
-        confidence_weight_sum=("confidence_weight", "sum"),
-        mean_article_score=("article_sentiment_score", "mean"),
-    ).reset_index()
-
-    grouped["S_t"] = grouped["weighted_score_sum"] / grouped["confidence_weight_sum"]
-    grouped["M_t"] = grouped["S_t"].abs()
-    grouped["ticker"] = ticker
+        daily_df = grouped.sort_values("date").reset_index(drop=True)
 
     output_path = output_dir / f"{ticker}_daily_sentiment.csv"
-    grouped.to_csv(output_path, index=False)
+    daily_df.to_csv(output_path, index=False)
 
     print(f"Saved daily sentiment for {ticker} to {output_path}")
+    return output_path
