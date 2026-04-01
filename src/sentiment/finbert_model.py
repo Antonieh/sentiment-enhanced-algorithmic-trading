@@ -1,6 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
-
 MODEL_NAME = "ProsusAI/finbert"
 
 
@@ -12,8 +11,7 @@ def load_finbert_pipeline():
         "text-classification",
         model=model,
         tokenizer=tokenizer,
-        return_all_scores=True,
-        truncation=True,
-        max_length=512,
+        top_k=None,
     )
+
     return sentiment_pipeline

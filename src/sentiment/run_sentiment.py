@@ -1,64 +1,60 @@
 from pathlib import Path
 import json
+
 import pandas as pd
 
 from src.sentiment.finbert_model import load_finbert_pipeline
-from src.sentiment.scoring import scores_to_dict, article_sentiment_score
+from src.sentiment.scoring import (
+    scores_to_dict,
+    article_sentiment_score,
+    article_confidence,
+)
 
 
-def build_text(title: str, summary: str) -> str:
-    title = title or ""
-    summary = summary or ""
-    text = f"{title}. {summary}".strip()
-    return text
-
-
-def run_finbert_for_ticker(ticker: str) -> None:
-    input_path = Path("data/raw/rss news") / f"{ticker}_news.json"
+def score_rss_news_file(ticker: str) -> Path:
+    input_path = Path("data/raw/rss_news") / f"{ticker}_rss_news.json"
     output_dir = Path("data/processed/sentiment")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not input_path.exists():
-        raise FileNotFoundError(f"Missing raw rss news file: {input_path}")
+        raise FileNotFoundError(f"Missing RSS news file: {input_path}")
 
     with open(input_path, "r", encoding="utf-8") as f:
-        entries = json.load(f)
+        news_items = json.load(f)
 
     sentiment_pipeline = load_finbert_pipeline()
 
-    rows = []
-    for entry in entries:
-        title = entry.get("title", "")
-        summary = entry.get("summary", "")
-        published = entry.get("published", "")
-        link = entry.get("link", "")
+    scored_rows = []
+    for item in news_items:
+        title = item.get("title", "")
+        summary = item.get("summary", "")
+        text = f"{title}. {summary}".strip()
 
-        text = build_text(title, summary)
-
-        if not text.strip():
+        if not text:
             continue
 
         model_output = sentiment_pipeline(text)[0]
         prob_dict = scores_to_dict(model_output)
-        s_it = article_sentiment_score(prob_dict)
 
-        rows.append(
+        scored_rows.append(
             {
                 "ticker": ticker,
-                "published": published,
+                "published": item.get("published", ""),
                 "title": title,
                 "summary": summary,
-                "link": link,
-                "text": text,
-                "p_positive": prob_dict["positive"],
-                "p_neutral": prob_dict["neutral"],
-                "p_negative": prob_dict["negative"],
-                "article_sentiment_score": s_it,
+                "link": item.get("link", ""),
+                "p_positive": prob_dict["p_positive"],
+                "p_negative": prob_dict["p_negative"],
+                "p_neutral": prob_dict["p_neutral"],
+                "article_sentiment_score": article_sentiment_score(prob_dict),
+                "confidence": article_confidence(prob_dict),
             }
         )
 
-    df = pd.DataFrame(rows)
+    scored_df = pd.DataFrame(scored_rows)
+
     output_path = output_dir / f"{ticker}_article_sentiment.csv"
-    df.to_csv(output_path, index=False)
+    scored_df.to_csv(output_path, index=False)
 
     print(f"Saved article-level sentiment for {ticker} to {output_path}")
+    return output_path

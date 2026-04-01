@@ -1,24 +1,47 @@
 from typing import Dict, List
 
 
+LABEL_MAP = {
+    "positive": "p_positive",
+    "negative": "p_negative",
+    "neutral": "p_neutral",
+}
+
+
 def scores_to_dict(model_output: List[Dict]) -> Dict[str, float]:
     """
-    Convert Hugging Face pipeline output into a clean probability dict.
+    Convert FinBERT pipeline output into a standardized probability dictionary.
     Expected labels: positive, negative, neutral
     """
-    prob_dict = {"positive": 0.0, "negative": 0.0, "neutral": 0.0}
+    result = {
+        "p_positive": 0.0,
+        "p_negative": 0.0,
+        "p_neutral": 0.0,
+    }
 
     for item in model_output:
         label = item["label"].lower()
         score = float(item["score"])
-        prob_dict[label] = score
 
-    return prob_dict
+        if label in LABEL_MAP:
+            result[LABEL_MAP[label]] = score
+
+    return result
 
 
-def article_sentiment_score(prob_dict: Dict[str, float]) -> float:
+def article_sentiment_score(probabilities: Dict[str, float]) -> float:
     """
-    Article-level score:
-    s = p_pos - p_neg
+    Continuous article-level sentiment score in [-1, 1].
     """
-    return prob_dict["positive"] - prob_dict["negative"]
+    return probabilities["p_positive"] - probabilities["p_negative"]
+
+
+def article_confidence(probabilities: Dict[str, float]) -> float:
+    """
+    Confidence is the highest class probability.
+    """
+    return max(
+        probabilities["p_positive"],
+        probabilities["p_negative"],
+        probabilities["p_neutral"],
+    )
