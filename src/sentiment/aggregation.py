@@ -20,6 +20,8 @@ def aggregate_daily_sentiment(ticker: str) -> Path:
 
     required_cols = [
         "published",
+        "title",
+        "link",
         "p_positive",
         "p_negative",
         "p_neutral",
@@ -32,6 +34,12 @@ def aggregate_daily_sentiment(ticker: str) -> Path:
 
     df["published"] = pd.to_datetime(df["published"], errors="coerce")
     df = df.dropna(subset=["published"]).copy()
+
+    # Deduplicate repeated RSS items across snapshots
+    df["title"] = df["title"].fillna("").astype(str)
+    df["link"] = df["link"].fillna("").astype(str)
+    df = df.drop_duplicates(subset=["published", "title", "link"]).copy()
+
     df["date"] = df["published"].dt.date
 
     if df.empty:
