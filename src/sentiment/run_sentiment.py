@@ -11,13 +11,23 @@ from src.sentiment.scoring import (
 )
 
 
-def score_rss_news_file(ticker: str) -> Path:
-    input_path = Path("data/raw/rss_news") / f"{ticker}_rss_news.json"
-    output_dir = Path("data/processed/sentiment")
-    output_dir.mkdir(parents=True, exist_ok=True)
+def get_latest_rss_news_file(ticker: str) -> Path:
+    input_dir = Path("data/raw/rss_news") / ticker
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Missing RSS news directory: {input_dir}")
 
-    if not input_path.exists():
-        raise FileNotFoundError(f"Missing RSS news file: {input_path}")
+    files = sorted(input_dir.glob(f"{ticker}_*_rss_news.json"))
+    if not files:
+        raise FileNotFoundError(f"No RSS snapshot files found for {ticker} in {input_dir}")
+
+    return files[-1]
+
+
+def score_rss_news_file(ticker: str) -> Path:
+    input_path = get_latest_rss_news_file(ticker)
+
+    output_dir = Path("data/processed/sentiment") / ticker
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     with open(input_path, "r", encoding="utf-8") as f:
         news_items = json.load(f)
@@ -48,12 +58,14 @@ def score_rss_news_file(ticker: str) -> Path:
                 "p_neutral": prob_dict["p_neutral"],
                 "article_sentiment_score": article_sentiment_score(prob_dict),
                 "confidence": article_confidence(prob_dict),
+                "collected_at": item.get("collected_at", ""),
             }
         )
 
     scored_df = pd.DataFrame(scored_rows)
 
-    output_path = output_dir / f"{ticker}_article_sentiment.csv"
+    stem = input_path.stem.replace("_rss_news", "_article_sentiment")
+    output_path = output_dir / f"{stem}.csv"
     scored_df.to_csv(output_path, index=False)
 
     print(f"Saved article-level sentiment for {ticker} to {output_path}")

@@ -10,7 +10,7 @@ LABEL_MAP = {
 
 def scores_to_dict(model_output: List[Dict]) -> Dict[str, float]:
     """
-    Convert FinBERT pipeline output into a standardized probability dictionary.
+    Convert FinBERT pipelines output into a standardized probability dictionary.
     Expected labels: positive, negative, neutral
     """
     result = {

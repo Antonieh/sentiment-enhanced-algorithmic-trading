@@ -4,14 +4,19 @@ import pandas as pd
 
 
 def aggregate_daily_sentiment(ticker: str) -> Path:
-    input_path = Path("data/processed/sentiment") / f"{ticker}_article_sentiment.csv"
+    input_dir = Path("data/processed/sentiment") / ticker
     output_dir = Path("data/processed/sentiment")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not input_path.exists():
-        raise FileNotFoundError(f"Missing article sentiment file: {input_path}")
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Missing sentiment directory: {input_dir}")
 
-    df = pd.read_csv(input_path)
+    files = sorted(input_dir.glob(f"{ticker}_*_article_sentiment.csv"))
+    if not files:
+        raise FileNotFoundError(f"No article sentiment files found for {ticker} in {input_dir}")
+
+    frames = [pd.read_csv(path) for path in files]
+    df = pd.concat(frames, ignore_index=True)
 
     required_cols = [
         "published",
