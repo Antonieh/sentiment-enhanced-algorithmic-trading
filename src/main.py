@@ -1,13 +1,16 @@
-from src.data_collection.rss_news import fetch_rss_news
-from src.sentiment.run_sentiment import score_rss_news_file
-from src.sentiment.aggregation import aggregate_daily_sentiment
+from src.pipelines.collect_daily_rss import main as collect_daily_rss
+from src.pipelines.build_recent_datasets import main as build_recent_datasets
+from src.pipelines.run_recent_experiments import main as run_recent_experiments
+from src.analysis.cross_section_summary import main as run_cross_section_summary
 
 
 def main() -> None:
-    ticker = "AAPL"
-    fetch_rss_news(ticker=ticker, limit=20)
-    score_rss_news_file(ticker=ticker)
-    aggregate_daily_sentiment(ticker=ticker)
+    collect_daily_rss()
+    build_recent_datasets()
+    run_recent_experiments()
+    run_cross_section_summary()
+
+    print("\nPipeline finished.")
 
 
 if __name__ == "__main__":

@@ -30,19 +30,23 @@ def run_one_strategy(ticker: str, strategy_name: str):
     else:
         raise ValueError(f"Unknown strategy: {strategy_name}")
 
-    if trades_df.empty:
-        print(f"No trades generated for {ticker} using {strategy_name}")
-        return
-
     save_trade_table(trades_df, ticker=ticker, strategy_name=strategy_name)
 
     metrics_df = compute_trade_metrics(trades_df)
     save_metrics(metrics_df, ticker=ticker, strategy_name=strategy_name)
 
-    strength_df = analyze_signal_strength(trades_df)
-    save_signal_strength_analysis(strength_df, ticker=ticker, strategy_name=strategy_name)
+    if strategy_name == "sentiment_sma" and "M_t_entry" in trades_df.columns:
+        strength_df = analyze_signal_strength(trades_df)
+        save_signal_strength_analysis(
+            strength_df,
+            ticker=ticker,
+            strategy_name=strategy_name,
+        )
 
-    print(f"Completed {strategy_name} for {ticker}")
+    if trades_df.empty:
+        print(f"No trades generated for {ticker} using {strategy_name}")
+    else:
+        print(f"Completed {strategy_name} for {ticker}")
 
 
 def main() -> None:

@@ -2,60 +2,53 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
-def plot_equity_curve(trades_df: pd.DataFrame, ticker: str, strategy_name: str) -> Path:
-    output_dir = Path("data/processed/plots")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    if trades_df.empty:
-        raise ValueError("Cannot plot equity curve from empty trade table")
-
-    df = trades_df.copy()
-    df["exit_time"] = pd.to_datetime(df["exit_time"], errors="coerce")
-    df["return_pct"] = pd.to_numeric(df["return_pct"], errors="coerce").fillna(0.0)
-    df = df.sort_values("exit_time")
-
-    df["equity_curve"] = (1 + df["return_pct"]).cumprod()
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(df["exit_time"], df["equity_curve"])
-    plt.xlabel("Exit Time")
-    plt.ylabel("Equity")
-    plt.title(f"Equity Curve - {ticker} - {strategy_name}")
-    plt.tight_layout()
-
-    output_path = output_dir / f"{ticker}_{strategy_name}_equity_curve.png"
-    plt.savefig(output_path)
-    plt.close()
-
-    print(f"Saved equity curve to {output_path}")
-    return output_path
+SHARES = 10
 
 
-def plot_balance_curve(trades_df: pd.DataFrame, ticker: str, strategy_name: str, starting_balance: float = 1.0) -> Path:
-    output_dir = Path("data/processed/plots")
-    output_dir.mkdir(parents=True, exist_ok=True)
+def _prepare_trades(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
 
-    if trades_df.empty:
-        raise ValueError("Cannot plot balance curve from empty trade table")
+    df["exit_time"] = pd.to_datetime(df["exit_time"])
+    df["entry_price"] = pd.to_numeric(df["entry_price"])
+    df["exit_price"] = pd.to_numeric(df["exit_price"])
+    df["side"] = df["side"].astype(str).str.lower().str.strip()
 
-    df = trades_df.copy()
-    df["exit_time"] = pd.to_datetime(df["exit_time"], errors="coerce")
-    df["pnl"] = pd.to_numeric(df["pnl"], errors="coerce").fillna(0.0)
-    df = df.sort_values("exit_time")
+    df = df.sort_values("exit_time").reset_index(drop=True)
 
-    df["balance_curve"] = starting_balance + df["pnl"].cumsum()
+    def compute_pnl(row):
+        if row["side"] == "long":
+            return SHARES * (row["exit_price"] - row["entry_price"])
+        elif row["side"] == "short":
+            return SHARES * (row["entry_price"] - row["exit_price"])
+        return 0.0
+
+    df["pnl_fixed"] = df.apply(compute_pnl, axis=1)
+
+    print("\nDEBUG PnL:")
+    print(df[["entry_price", "exit_price", "side", "pnl_fixed"]])
+
+    return df
+
+
+def plot_balance_curve(trades_df, ticker, strategy_name, starting_balance=10000):
+    df = _prepare_trades(trades_df)
+
+    df["balance"] = starting_balance + df["pnl_fixed"].cumsum()
+
+    print("\nDEBUG BALANCE:")
+    print(df[["exit_time", "pnl_fixed", "balance"]])
 
     plt.figure(figsize=(10, 5))
-    plt.plot(df["exit_time"], df["balance_curve"])
+    plt.plot(df["exit_time"], df["balance"], marker="o")
+
+    plt.title(f"Balance Curve - {ticker} - {strategy_name}")
     plt.xlabel("Exit Time")
     plt.ylabel("Balance")
-    plt.title(f"Balance Curve - {ticker} - {strategy_name}")
-    plt.tight_layout()
 
-    output_path = output_dir / f"{ticker}_{strategy_name}_balance_curve.png"
+    output_path = Path("data/processed/plots") / f"{ticker}_{strategy_name}_balance.png"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     plt.savefig(output_path)
     plt.close()
 
-    print(f"Saved balance curve to {output_path}")
-    return output_path
+    print("Saved:", output_path)

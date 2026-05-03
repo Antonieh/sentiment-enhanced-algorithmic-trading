@@ -21,3 +21,8 @@ venv/
 data/raw/
 data/processed/
 outputs/
+
+data/
+outputs/
+*.csv
+*.png
