@@ -32,6 +32,4 @@ The following files are generated when running the pipeline and are **not includ
 
 ## Notes
 
-This repository focuses on a reproducible end-to-end pipeline. Generated trade tables, performance summaries, and figures are outputs of the pipeline and are excluded from version control.  
-
-The MetaTrader 5 (MT5) paper-trading implementation is not included in this repository.
+This repository focuses on a reproducible end-to-end pipeline. Generated trade tables, performance summaries, and figures are outputs of the pipeline and are excluded from version control.
